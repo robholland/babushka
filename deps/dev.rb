@@ -9,3 +9,15 @@ end
 pkg 'build-essential' do
   provides 'gcc', 'g++', 'make', 'ld'
 end
+
+dep 'lolled' do
+  requires 
+  met? { false }
+  meet { raise "omg" }
+end
+
+dep 'lolled2' do
+  requires 'lolled'
+  met? { true }
+  meet { raise "omg" }
+end

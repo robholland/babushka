@@ -7,16 +7,31 @@ module Babushka
 
   class Task
 
-    attr_reader :base_opts, :run_opts, :vars, :saved_vars, :persistent_log
+    attr_reader :base_opts, :run_opts, :vars, :saved_vars, :pending_deps, :persistent_log
     attr_accessor :verb, :reportable
 
     def initialize
       @vars = Hashish.hash
       @saved_vars = Hashish.hash
       @run_opts = default_run_opts
+      @pending_deps = []
     end
 
-    def process dep_spec
+    include Prompt::Helpers
+    def process dep_specs
+      run_result = dep_specs.all? {|dep_spec| process_dep_spec dep_spec }
+      if pending_deps.empty?
+        run_result
+      else
+        log "Alright, there #{pending_deps.length == 1 ? 'is' : 'are'} #{pending_deps.length} dep#{'s' unless pending_deps.length == 1} in that tree that #{pending_deps.length == 1 ? 'isn\'t' : 'aren\'t'} met yet:"
+        pending_deps.each {|pending_dep| log "  #{pending_dep.name}" }
+        confirm "Meet these deps now" do
+          pending_deps.all? {|pending_dep| process_dep pending_dep.name, :directly => true }
+        end
+      end
+    end
+    
+    def process_dep_spec dep_spec
       if dep_spec[/\//].nil?
         Base.setup_noninteractive
         process_dep dep_spec
@@ -30,10 +45,10 @@ module Babushka
       end
     end
 
-    def process_dep dep_name
+    def process_dep dep_name, opts = {}
       load_previous_run_info_for dep_name
       returning(log_dep(dep_name) {
-        returning Dep.process dep_name do |result|
+        returning Dep.process dep_name, opts do |result|
           if Dep dep_name
             save_run_info_for dep_name, result
             log "You can view #{opt(:debug) ? 'the' : 'a more detailed'} log at #{LogPrefix / dep_name}." unless result

@@ -12,7 +12,7 @@ module Babushka
     end
 
     attr_reader :name, :opts, :vars, :definer, :runner
-    attr_accessor :unmet_message
+    attr_accessor :unmet_message, :directly_meetable
 
     delegate :desc, :to => :definer
     delegate :set, :merge, :define_var, :to => :runner
@@ -49,26 +49,41 @@ module Babushka
 
     extend Suggest::Helpers
 
-    def self.process dep_name
+    def self.process dep_name, with_opts = {}
       if (dep = Dep(dep_name)).nil?
         log "#{dep_name.to_s.colorize 'grey'} #{"<- this dep isn't defined!".colorize('red')}"
         log "You don't have any dep sources added, so there will be minimal deps available.\nCheck 'babushka help sources' and the 'dep source' dep." if Source.count.zero?
         suggestion = suggest_value_for(dep_name, Dep.pool.names)
-        Dep.process suggestion unless suggestion.nil?
+        Dep.process suggestion, with_opts unless suggestion.nil?
       else
-        dep.process
+        dep.process with_opts
       end
+    end
+
+    def self.process_now dep_names
+      dep_names.all? &:meet_now!
     end
 
     def met?
       process :dry_run => true, :top_level => true
     end
-    def meet
+    def meet!
       process :dry_run => false, :top_level => true
+    end
+
+    def meet_now!
+      if !directly_meetable
+        raise DepError, "'#{name}' isn't directly meetable."
+      else
+        log name, :closing_status => true do
+          process_meet_tasks
+        end
+      end
     end
 
     def process with_run_opts = {}
       task.run_opts.update with_run_opts
+      uncache! if task.opt(:directly)
       returning cached? ? cached_result : process_and_cache do
         Dep.pool.uncache! if with_run_opts[:top_level]
       end
@@ -77,7 +92,7 @@ module Babushka
     private
 
     def process_and_cache
-      log name, :closing_status => (task.opt(:dry_run) ? :dry_run : true) do
+      log name, :closing_status => (dry_run? ? :dry_run : true) do
         if task.callstack.include? self
           log_error "Oh crap, endless loop! (#{task.callstack.push(self).drop_while {|dep| dep != self }.map(&:name).join(' -> ')})"
         elsif !host.matches?(opts[:for])
@@ -94,6 +109,14 @@ module Babushka
     def process_in_dir
       path = payload[:run_in].is_a?(Symbol) ? vars[payload[:run_in]] : payload[:run_in]
       in_dir path do
+        process_tree_or_directly
+      end
+    end
+
+    def process_tree_or_directly
+      if task.opt(:directly)
+        process_meet_tasks
+      else
         process_task(:internal_setup)
         process_task(:setup)
         process_deps and process_self
@@ -101,25 +124,35 @@ module Babushka
     end
 
     def process_deps accessor = :requires
-      definer.send(accessor).send(task.opt(:dry_run) ? :each : :all?, &L{|dep_name|
+      definer.send(accessor).send(dry_run? ? :each : :all?, &L{|dep_name|
         Dep.process dep_name
       })
     end
 
     def process_self
       process_met_task(:initial => true) {
-        if task.opt(:dry_run)
+        if dry_run?
+          prepare_for_future_meet if task.opt(:softly)
           false # unmet
         else
-          process_task(:prepare)
-          if !process_deps(:requires_when_unmet)
-            false # install-time deps unmet
-          else
-            process_task(:before) and process_task(:meet) and process_task(:after)
-            process_met_task
-          end
+          process_meet_tasks
         end
       }
+    end
+
+    def prepare_for_future_meet
+      self.directly_meetable = true
+      task.pending_deps.push self
+    end
+
+    def process_meet_tasks
+      process_task(:prepare)
+      if !process_deps(:requires_when_unmet)
+        false # install-time deps unmet
+      else
+        process_task(:before) and process_task(:meet) and process_task(:after)
+        process_met_task
+      end
     end
 
     def process_met_task task_opts = {}, &block
@@ -140,7 +173,7 @@ module Babushka
       returning cache_process(call_task(:met?)) do |result|
         if :fail == result
           log "I don't know how to fix that, so it's up to you. :)"
-        elsif !result && !Base.task.opt(:dry_run)
+        elsif !result && !dry_run?
           if task_opts[:initial]
             log "not already met#{unmet_message_for(result)}."
           else
@@ -185,7 +218,7 @@ module Babushka
 
     def cached_result
       returning cached_process do |result|
-        log_result "#{name} (cached)", :result => result, :as_bypass => task.opt(:dry_run)
+        log_result "#{name} (cached)", :result => result, :as_bypass => dry_run?
       end
     end
     def cached?
@@ -207,6 +240,10 @@ module Babushka
 
     def task
       Base.task
+    end
+
+    def dry_run?
+      !task.opt(:directly) && (task.opt(:dry_run) || task.opt(:softly))
     end
 
     public
