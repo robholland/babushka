@@ -190,7 +190,7 @@ module Babushka
     end
 
     def call_task task_name
-      # log "calling #{name} / #{task_name}"
+      debug "calling #{name} / #{task_name}"
       track_block_for(task_name) if Base.task.opt(:track_blocks)
       runner.instance_eval &definer.send(task_name)
     rescue StandardError => e
