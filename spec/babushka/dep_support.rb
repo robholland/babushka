@@ -12,11 +12,15 @@ end
 
 def make_counter_dep opts = {}
   incrementers = BaseDepDefiner.accepted_blocks.inject({}) {|lambdas,key|
-    lambdas[key] = L{ @yield_counts[opts[:name]][key] += 1 }
+    lambdas[key] = L{
+      puts "run(#{opts[:name]}/#{key})"
+      @yield_counts[opts[:name]][key] += 1
+    }
     lambdas
   }
   dep opts[:name] do
     requires opts[:requires] unless opts[:requires].nil?
+    assumes opts[:assumes] unless opts[:assumes].nil?
     requires_when_unmet opts[:requires_when_unmet] unless opts[:requires_when_unmet].nil?
     BaseDepDefiner.accepted_blocks.each {|dep_method|
       send dep_method do

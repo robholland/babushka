@@ -119,7 +119,7 @@ module Babushka
       else
         process_task(:internal_setup)
         process_task(:setup)
-        process_deps and process_self
+        process_deps and process_deps(:assumes) and process_self
       end
     end
 
@@ -156,6 +156,8 @@ module Babushka
     end
 
     def process_met_task task_opts = {}, &block
+      if definer.assumes.any? {|dep_name| !Dep(dep_name).met? }
+        false # assumptions not met
       if !(met_result = run_met_task(task_opts))
         if block.nil?
           false # unmet

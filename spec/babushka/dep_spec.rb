@@ -42,9 +42,11 @@ describe "dep creation" do
     L{
       dep 'parent dep' do
         requires dep('nested dep')
+        assumes dep('another nested dep')
       end
-    }.should change(Dep.pool, :count).by(2)
+    }.should change(Dep.pool, :count).by(3)
     Dep('parent dep').definer.requires.should == [Dep('nested dep')]
+    Dep('parent dep').definer.assumes.should == [Dep('another nested dep')]
   end
   after { Dep.pool.clear! }
 end

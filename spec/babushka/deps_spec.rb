@@ -5,7 +5,7 @@ shared_examples_for "met?" do
   describe "met?" do
     before { Dep('a').met? }
     it "should met?-check each dep exactly once" do
-      %w[a b c d e f].each {|i| @yield_counts[i].should == @yield_counts_already_met }
+      %w[a b c d e f].each {|i| puts i; @yield_counts[i].should == @yield_counts_already_met }
     end
     it "shouldn't run the meet-only dep" do
       @yield_counts['g'].should == @yield_counts_none
@@ -17,7 +17,7 @@ describe "an already met dep tree" do
   before {
     setup_yield_counts
     make_counter_dep :name => 'a', :requires => %w[b c]
-    make_counter_dep :name => 'b', :requires => %w[c d e]
+    make_counter_dep :name => 'b', :assumes => %w[c d e]
     make_counter_dep :name => 'c', :requires => %w[f]
     make_counter_dep :name => 'd', :requires => %w[e f], :requires_when_unmet => %w[g]
     make_counter_dep :name => 'e', :requires => %w[f]
@@ -26,9 +26,9 @@ describe "an already met dep tree" do
   }
   it_should_behave_like "met?"
   describe "meet" do
-    before { Dep('a').meet }
+    before { Dep('a').meet! }
     it "should meet no deps" do
-      %w[a b c d e f].each {|i| @yield_counts[i].should == @yield_counts_already_met }
+      %w[a b c d e f].each {|i| puts i; @yield_counts[i].should == @yield_counts_already_met }
     end
     it "shouldn't run the meet-only dep" do
       @yield_counts['g'].should == @yield_counts_none
@@ -50,7 +50,7 @@ describe "an unmeetable dep tree" do
   }
   it_should_behave_like "met?"
   describe "meet" do
-    before { Dep('a').meet }
+    before { Dep('a').meet! }
     it "should fail on the bootom-most dep" do
       %w[f].each {|i| @yield_counts[i].should == @yield_counts_failed_meet_run }
     end
@@ -77,7 +77,7 @@ describe "a meetable dep tree" do
   }
   it_should_behave_like "met?"
   describe "meet" do
-    before { Dep('a').meet }
+    before { Dep('a').meet! }
     it "should meet each dep exactly once" do
       Dep.pool.names.each {|i| @yield_counts[i].should == @yield_counts_meet_run }
     end
@@ -98,7 +98,7 @@ describe "a partially meetable dep tree" do
   }
   it_should_behave_like "met?"
   describe "meet" do
-    before { Dep('a').meet }
+    before { Dep('a').meet! }
     it "should meet deps until one fails" do
       %w[c f g].each {|i| @yield_counts[i].should == @yield_counts_meet_run }
     end
