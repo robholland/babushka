@@ -2,7 +2,7 @@ module Babushka
   class Source
     attr_reader :name, :uri, :deps
 
-    delegate :for, :register, :count, :skipped_count, :to => :deps
+    delegate :register, :count, :skipped_count, :to => :deps
 
     def self.default_source
       @default_source ||= Source.new(nil, :name => 'default')
@@ -103,6 +103,10 @@ module Babushka
       @name = opts[:name]
       @external = opts[:external]
       @deps = DepPool.new
+    end
+
+    def find dep_spec
+      deps.for dep_spec
     end
 
     def prefix
