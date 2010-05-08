@@ -23,11 +23,11 @@ module Babushka
     end
 
     def setup_noninteractive
-      load_deps_from all_dep_locations
+      Source.load_all!
     end
 
     def setup_noninteractive_for dep_locations
-      load_deps_from core_dep_locations.concat([*dep_locations]).concat(all_dep_locations).uniq
+      Source.load_all! :first => dep_locations
     end
 
     private
