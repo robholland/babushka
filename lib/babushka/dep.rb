@@ -42,16 +42,16 @@ module Babushka
       source.register self
     end
 
-    def self.for spec
-      if spec[/:/]
-        source_name, dep_name = spec.split(':', 2)
+    def self.for dep_spec
+      if dep_spec[/:/]
+        source_name, dep_name = dep_spec.split(':', 2)
         Source.for(source_name).find(dep_name)
       else
-        matches = Source.all_sources.map {|source| source.find(dep_name) }.flatten
+        matches = Source.all_sources.map {|source| source.find(dep_spec) }.flatten.compact
         if matches.length == 1
           matches.first
         else
-          log "More than one source (#{matches.map(&:source).map(&:name).join(',')}) contain a dep called '#{dep_name}'."
+          log "More than one source (#{matches.map(&:dep_source).map(&:name).join(',')}) contain a dep called '#{dep_name}'."
         end
       end
     end
