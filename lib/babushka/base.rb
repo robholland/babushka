@@ -10,9 +10,6 @@ module Babushka
     def host
       @host ||= Babushka::SystemSpec.for_system
     end
-    def dep_pool
-      @pool ||= DepPool.new
-    end
 
     def run args
       if (task.verb = extract_verb(args)).nil?
