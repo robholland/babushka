@@ -4,20 +4,20 @@ require 'dep_support'
 describe "Dep.make" do
   it "should reject deps with nonprintable characters in their names" do
     L{
-      Dep.make "carriage\rreturn", {}, nil, BaseDepDefiner, BaseDepRunner
+      Dep.make "carriage\rreturn", nil, nil, {}, nil, BaseDepDefiner, BaseDepRunner
     }.should raise_error DepError, "The dep name 'carriage\rreturn' contains nonprintable characters."
     dep("carriage\rreturn").should be_nil
   end
   it "should reject deps with colons in their names" do
     L{
-      Dep.make "colons:invalidate names", {}, nil, BaseDepDefiner, BaseDepRunner
+      Dep.make "colons:invalidate names", nil, nil, {}, nil, BaseDepDefiner, BaseDepRunner
     }.should raise_error DepError, "The dep name 'colons:invalidate names' contains ':', which isn't allowed."
     dep("colons:invalidate names").should be_nil
   end
   it "should create deps with valid names" do
     L{
-      Dep.make("valid dep name", {}, nil, BaseDepDefiner, BaseDepRunner).should be_an_instance_of(Dep)
-    }.should change(Dep.pool, :count).by(1)
+      Dep.make("valid dep name", Source.default_source, nil, {}, nil, BaseDepDefiner, BaseDepRunner).should be_an_instance_of(Dep)
+    }.should change(Source.default_source, :count).by(1)
   end
 end
 
@@ -25,7 +25,7 @@ describe "dep creation" do
   it "should work for blank deps" do
     L{
       dep "blank"
-    }.should change(Dep.pool, :count).by(1)
+    }.should change(Source.default_source, :count).by(1)
   end
   it "should work for filled in deps" do
     L{
@@ -36,17 +36,17 @@ describe "dep creation" do
         meet { }
         after { }
       end
-    }.should change(Dep.pool, :count).by(1)
+    }.should change(Source.default_source, :count).by(1)
   end
   it "should accept deps as dep names" do
     L{
       dep 'parent dep' do
         requires dep('nested dep')
       end
-    }.should change(Dep.pool, :count).by(2)
+    }.should change(Source.default_source, :count).by(2)
     Dep('parent dep').definer.requires.should == [Dep('nested dep')]
   end
-  after { Dep.pool.clear! }
+  after { Source.default_source.deps.clear! }
 end
 
 describe "calling met? on a single dep" do

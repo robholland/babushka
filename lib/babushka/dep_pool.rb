@@ -1,11 +1,11 @@
 module Babushka
   class DepPool
 
-    attr_reader :skipped_count
+    attr_accessor :skipped_count
 
     def initialize
       clear!
-      @skipped = 0
+      @skipped_count = 0
     end
 
     def count
@@ -20,19 +20,6 @@ module Babushka
     end
     def for spec
       spec.respond_to?(:name) ? @dep_hash[spec.name] : @dep_hash[spec]
-    end
-
-    def add name, in_opts, block, definer_class, runner_class
-      if self.for name
-        @skipped += 1
-        self.for name
-      else
-        begin
-          Dep.make name, in_opts, block, definer_class, runner_class
-        rescue DepError => e
-          log_error e.message
-        end
-      end
     end
 
     def clear!

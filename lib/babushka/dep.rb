@@ -4,11 +4,11 @@ module Babushka
   class Dep
     module Helpers
       def Dep spec;                    Dep.for spec end
-      def dep name, opts = {}, &block; Dep.pool.add name, opts, block, BaseDepDefiner, BaseDepRunner end
+      def dep name, opts = {}, &block; DepDefiner.define_dep name, opts, block, BaseDepDefiner, BaseDepRunner end
       def meta name, opts = {}, &block; MetaDepWrapper.for name, opts, &block end
-      def pkg name, opts = {}, &block; Dep.pool.add name, opts, block, PkgDepDefiner , PkgDepRunner  end
-      def gem name, opts = {}, &block; Dep.pool.add name, opts, block, GemDepDefiner , GemDepRunner  end
-      def ext name, opts = {}, &block; Dep.pool.add name, opts, block, ExtDepDefiner , ExtDepRunner  end
+      def pkg name, opts = {}, &block; DepDefiner.define_dep name, opts, block, PkgDepDefiner , PkgDepRunner  end
+      def gem name, opts = {}, &block; DepDefiner.define_dep name, opts, block, GemDepDefiner , GemDepRunner  end
+      def ext name, opts = {}, &block; DepDefiner.define_dep name, opts, block, ExtDepDefiner , ExtDepRunner  end
     end
 
     attr_reader :name, :opts, :vars, :definer, :runner
@@ -17,17 +17,17 @@ module Babushka
     delegate :desc, :to => :definer
     delegate :set, :merge, :define_var, :to => :runner
 
-    def self.make name, in_opts, block, definer_class, runner_class
+    def self.make name, source, source_path, in_opts, block, definer_class, runner_class
       if /\A[[:print:]]+\z/i !~ name
         raise DepError, "The dep name '#{name}' contains nonprintable characters."
       elsif /:/ =~ name
         raise DepError, "The dep name '#{name}' contains ':', which isn't allowed."
       else
-        new name, in_opts, block, definer_class, runner_class
+        new name, source, source_path, in_opts, block, definer_class, runner_class
       end
     end
 
-    def initialize name, in_opts, block, definer_class, runner_class
+    def initialize name, source, source_path, in_opts, block, definer_class, runner_class
       @name = name.to_s
       @opts = {
         :for => :all
@@ -35,16 +35,24 @@ module Babushka
       @vars = {}
       @runner = runner_class.new self
       @definer = definer_class.new self, &block
+      @source_path = source_path
       definer.define_and_process
       debug "\"#{name}\" depends on #{payload[:requires].inspect}"
-      Dep.pool.register self
+      source.register self
     end
 
-    def self.pool
-      Base.dep_pool
-    end
     def self.for spec
-      pool.for spec
+      if spec[/:/]
+        source_name, dep_name = spec.split(':', 2)
+        Source.for(source_name).find(dep_name)
+      else
+        matches = Source.all_sources.map {|source| source.find(dep_name) }.flatten
+        if matches.length == 1
+          matches.first
+        else
+          log "More than one source (#{matches.map(&:source).map(&:name).join(',')}) contain a dep called '#{dep_name}'."
+        end
+      end
     end
 
     extend Suggest::Helpers

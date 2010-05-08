@@ -1,6 +1,8 @@
 module Babushka
   class Source
-    attr_reader :name, :uri
+    attr_reader :name, :uri, :deps
+
+    delegate :for, :register, :count, :skipped_count, :to => :deps
 
     def self.pull!
       sources.all? {|source|
