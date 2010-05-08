@@ -184,13 +184,14 @@ describe "in_build_dir" do
   }
   it "should change to the build dir with no args" do
     in_build_dir {
-      Dir.pwd.should == "~/.babushka/src".p
+      Dir.pwd.should == "~/.babushka/build".p
     }
     Dir.pwd.should == @original_pwd
   end
   it "should append the supplied path when supplied" do
-    in_build_dir "tmp" do
-      Dir.pwd.should == "~/.babushka/src/tmp".p
+    in_build_dir "tmp"
+     do
+      Dir.pwd.should == "~/.babushka/build/tmp".p
     end
     Dir.pwd.should == @original_pwd
   end
