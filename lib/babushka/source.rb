@@ -84,12 +84,6 @@ module Babushka
       sources_raw.each {|source| source[:uri] = source[:uri].to_fancypath }
     end
 
-    def self.paths
-      sources.map {|source|
-        Source.new(source).path
-      }
-    end
-
     def self.count
       sources.length
     end
