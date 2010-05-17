@@ -113,7 +113,8 @@ module Babushka
             '10.04' => :lucid
           },
           :debian => {
-            '5.0.4' => :lenny
+            '5.0.4' => :lenny,
+            'testing' => :squeeze
           }
         }
       }
@@ -145,6 +146,7 @@ module Babushka
           },
           :debian => {
             '5.0.4' => 'Lenny'
+            'testing' => 'Squeeze'
           }
         }
       }
